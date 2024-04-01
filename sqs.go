@@ -20,7 +20,7 @@ func GetSQSHandler(processRecord SQSRecordProcessor) Handler[events.SQSEvent, ev
 		err := processRecord(ctx, record)
 		if err != nil {
 			logger := GetLogger(ctx)
-			logger.Error("sqs messaging processing failed", "error", err.Error(), "body", record.Body)
+			logger.Error("sqs messaging processing failed", "errStr", err.Error(), "body", record.Body, "errObj", err)
 			successChannel <- false
 			return
 		}
