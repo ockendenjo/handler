@@ -109,13 +109,18 @@ func BuildAndStart[T interface{}, U interface{}](getHandler func(awsConfig aws.C
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
+	cfgWithoutXRay, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Fatalf("unable to load SDK config, %v", err)
+	}
+
 	//Instrument the AWS SDK - this needs to happen before any service clients (e.g. s3Client) are created
 	awsv2.AWSV2Instrumentor(&cfg.APIOptions)
 
 	//Pass the AWS config to the get handler - service clients can be created in this method
 	handlerFn := getHandler(cfg)
 
-	cwc := cloudwatch.NewFromConfig(cfg)
+	cwc := cloudwatch.NewFromConfig(cfgWithoutXRay)
 	m := setup(ctx, cwc)
 	wrappedHandler := WithLogger(handlerFn, &m)
 	m.Start()
