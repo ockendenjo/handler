@@ -78,7 +78,7 @@ func convertInput(input MetricsInput) types.MetricDatum {
 
 func (m *metrics) startWriter() {
 	for m.run {
-		time.Sleep(10 * time.Second)
+		time.Sleep(200 * time.Millisecond)
 		m.flush()
 	}
 }
