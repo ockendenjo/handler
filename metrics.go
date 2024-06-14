@@ -83,6 +83,7 @@ func (m *metrics) startWriter() {
 }
 
 func (m *metrics) flush() {
+	logger := GetLogger(m.context)
 	m.lock.Lock()
 	mapCopy := map[string][]types.MetricDatum{}
 	found := false
@@ -94,6 +95,7 @@ func (m *metrics) flush() {
 	m.lock.Unlock()
 
 	if !found {
+		logger.Info("no metrics to push")
 		return
 	}
 
@@ -105,7 +107,9 @@ func (m *metrics) flush() {
 			Namespace:  &namespace,
 		})
 		if err != nil {
-			GetLogger(m.context).Info("PutMetricData returned error", "err", err)
+			logger.Info("PutMetricData returned error", "err", err)
+		} else {
+			logger.Info("pushed metrics for namespace", "namespace", namespace)
 		}
 	}
 }

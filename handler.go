@@ -126,6 +126,7 @@ func BuildAndStart[T interface{}, U interface{}](getHandler func(awsConfig aws.C
 	m.Start()
 
 	lambda.StartWithOptions(wrappedHandler, lambda.WithEnableSIGTERM(func() {
+		fmt.Println("sigterm")
 		m.Shutdown()
 	}))
 }
