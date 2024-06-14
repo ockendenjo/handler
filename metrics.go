@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -83,7 +84,6 @@ func (m *metrics) startWriter() {
 }
 
 func (m *metrics) flush() {
-	logger := GetLogger(m.context)
 	m.lock.Lock()
 	mapCopy := map[string][]types.MetricDatum{}
 	found := false
@@ -95,7 +95,7 @@ func (m *metrics) flush() {
 	m.lock.Unlock()
 
 	if !found {
-		logger.Info("no metrics to push")
+		log.Printf("no metrics to push")
 		return
 	}
 
@@ -107,9 +107,9 @@ func (m *metrics) flush() {
 			Namespace:  &namespace,
 		})
 		if err != nil {
-			logger.Info("PutMetricData returned error", "err", err)
+			log.Printf("PutMetricDataError %v\n", err)
 		} else {
-			logger.Info("pushed metrics for namespace", "namespace", namespace)
+			log.Printf("PutMetricData namespace %s\n", namespace)
 		}
 	}
 }
