@@ -40,7 +40,7 @@ func TestWithLogger(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			wrappedHandler := WithLogger(tc.handler)
+			wrappedHandler := WithLogger(tc.handler, &metrics{})
 			output, err := wrappedHandler(context.Background(), inputEvent{Foo: 1})
 			tc.checkResult(t, output, err)
 		})

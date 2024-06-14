@@ -15,10 +15,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/ratelimit"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-xray-sdk-go/instrumentation/awsv2"
 )
 
 const loggerKey = "logger"
+const metricsKey = "metrics"
 
 func GetLogger(ctx context.Context) *slog.Logger {
 	val := ctx.Value(loggerKey)
@@ -28,6 +30,16 @@ func GetLogger(ctx context.Context) *slog.Logger {
 	return slog.Default()
 }
 
+func GetMetricsChan(ctx context.Context) chan MetricsInput {
+	val := ctx.Value(metricsKey)
+	if val == nil {
+		ch := make(chan MetricsInput, 0)
+		return ch
+	}
+	m := val.(*metrics)
+	return m.inputChan
+}
+
 func GetNewContextWithLogger(parent context.Context, logger *slog.Logger) context.Context {
 	newContext := context.WithValue(parent, loggerKey, logger)
 	return newContext
@@ -35,10 +47,11 @@ func GetNewContextWithLogger(parent context.Context, logger *slog.Logger) contex
 
 type Handler[T interface{}, U interface{}] func(ctx context.Context, event T) (U, error)
 
-func WithLogger[T interface{}, U interface{}](handlerFunc Handler[T, U]) Handler[T, U] {
+func WithLogger[T interface{}, U interface{}](handlerFunc Handler[T, U], m *metrics) Handler[T, U] {
 	return func(ctx context.Context, event T) (U, error) {
 		// Perform pre-handler tasks here
 		newContext := ContextWithLogger(ctx)
+		newContext = context.WithValue(newContext, metricsKey, m)
 
 		response, err := handlerFunc(newContext, event)
 		if err != nil {
@@ -102,7 +115,14 @@ func BuildAndStart[T interface{}, U interface{}](getHandler func(awsConfig aws.C
 	//Pass the AWS config to the get handler - service clients can be created in this method
 	handlerFn := getHandler(cfg)
 
-	lambda.Start(WithLogger(handlerFn))
+	cwc := cloudwatch.NewFromConfig(cfg)
+	m := setup(ctx, cwc)
+	wrappedHandler := WithLogger(handlerFn, &m)
+	m.Start()
+
+	lambda.StartWithOptions(wrappedHandler, lambda.WithEnableSIGTERM(func() {
+		m.Shutdown()
+	}))
 }
 
 func BuildAndStartCustomResource(getHandler func(awsConfig aws.Config) cfn.CustomResourceFunction) {
