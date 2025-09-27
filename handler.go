@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	lambdaSdk "github.com/aws/aws-sdk-go-v2/service/lambda"
-	"github.com/aws/aws-xray-sdk-go/instrumentation/awsv2"
+	"github.com/aws/aws-xray-sdk-go/v2/instrumentation/awsv2"
 )
 
 const loggerKey = "logger"
