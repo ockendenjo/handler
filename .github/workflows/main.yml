@@ -12,14 +12,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
         timeout-minutes: 1
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
 
       - name: Run tests
         shell: bash
-        run: make test
+        run: |
+          diff -u <(echo -n) <(go fmt $(go list ./...))
+          go vet ./...
+          go test ./...
