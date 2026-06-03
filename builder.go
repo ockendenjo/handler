@@ -20,7 +20,7 @@ type Builder[T any, U any] struct {
 	getHandler func(awsConfig aws.Config) Handler[T, U]
 }
 
-func Build[T interface{}, U interface{}](getHandler func(awsConfig aws.Config) Handler[T, U]) *Builder[T, U] {
+func Build[T any, U any](getHandler func(awsConfig aws.Config) Handler[T, U]) *Builder[T, U] {
 	ctx := context.Background()
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRetryer(func() aws.Retryer {
@@ -59,6 +59,6 @@ func (b *Builder[T, U]) Start() {
 }
 
 // BuildAndStart configures a logger, instruments the handler with OpenTelemetry, instruments the AWS SDK, and then starts the lambda
-func BuildAndStart[T interface{}, U interface{}](getHandler func(awsConfig aws.Config) Handler[T, U]) {
+func BuildAndStart[T any, U any](getHandler func(awsConfig aws.Config) Handler[T, U]) {
 	Build(getHandler).Start()
 }

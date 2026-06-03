@@ -38,7 +38,7 @@ func getLocalAddr() string {
 	return ":8000"
 }
 
-func startLambdaLocally[T interface{}, U interface{}](ctx context.Context, cfg aws.Config, getHandler func(awsConfig aws.Config) Handler[T, U]) {
+func startLambdaLocally[T any, U any](ctx context.Context, cfg aws.Config, getHandler func(awsConfig aws.Config) Handler[T, U]) {
 	fmt.Println("Running lambda locally - need to load environment variables from AWS")
 	funcName := getLambdaFunctionName()
 	errLog := log.New(os.Stderr, "", log.LstdFlags)
