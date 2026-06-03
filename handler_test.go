@@ -10,7 +10,7 @@ import (
 
 func TestWithLogger(t *testing.T) {
 
-	type testCase[T interface{}, U interface{}] struct {
+	type testCase[T any, U any] struct {
 		handler     Handler[T, U]
 		checkResult func(t *testing.T, output U, err error)
 		name        string

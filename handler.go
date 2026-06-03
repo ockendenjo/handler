@@ -9,10 +9,10 @@ import (
 	"strings"
 )
 
-type Handler[T interface{}, U interface{}] func(ctx *Context, event T) (U, error)
-type BasicHandler[T interface{}, U interface{}] func(ctx context.Context, event T) (U, error)
+type Handler[T any, U any] func(ctx *Context, event T) (U, error)
+type BasicHandler[T any, U any] func(ctx context.Context, event T) (U, error)
 
-func withLogger[T interface{}, U interface{}](handlerFunc Handler[T, U], logWriter *io.Writer) BasicHandler[T, U] {
+func withLogger[T any, U any](handlerFunc Handler[T, U], logWriter *io.Writer) BasicHandler[T, U] {
 	return func(ctx context.Context, event T) (U, error) {
 		var logger *Logger
 		if logWriter == nil {
