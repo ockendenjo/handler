@@ -26,6 +26,14 @@ go test ./... -json | tparse
 go fmt $(go list ./...)
 ```
 
+### sast
+
+```shell
+wget -O .golangci.json https://raw.githubusercontent.com/ockendenjo/actions/refs/heads/main/.golangci.json
+golangci-lint run
+govulncheck ./...
+```
+
 ### vet
 
 ```shell

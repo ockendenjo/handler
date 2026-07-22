@@ -159,7 +159,7 @@ func formatMsgAndArgs(msg string, args map[any]any) string {
 		if i > 0 {
 			builder.WriteString("; ")
 		}
-		builder.WriteString(fmt.Sprintf("%v='%v'", k, v))
+		_, _ = fmt.Fprintf(&builder, "%v='%v'", k, v)
 		i++
 	}
 
