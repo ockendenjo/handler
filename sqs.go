@@ -32,55 +32,64 @@ func NewLoggerParams() *LoggerParams {
 	return &LoggerParams{params: make(map[string]any)}
 }
 
+type sqsProcessor[T any] struct {
+	logInputEvent   bool
+	handler         SQSHandlerStruct[T]
+	addLoggerParams func(lp *LoggerParams, t T)
+}
+
+func (p *sqsProcessor[T]) process(ctx *Context, record events.SQSMessage, successChannel chan bool) {
+	var genericType T
+	logger := ctx.GetLogger()
+
+	defer func() {
+		if r := recover(); r != nil {
+			strStack := getStackTraceAsSlice(debug.Stack())
+			logger.With("panicStack", strStack).Errorf("Goroutine panicked: %v", r)
+			successChannel <- false
+		}
+	}()
+
+	err := json.Unmarshal([]byte(record.Body), &genericType)
+	if err != nil {
+		logger.Error("JSON unmarshal returned error", "error", err.Error(), "body", record.Body)
+		successChannel <- false
+		return
+	}
+
+	if p.logInputEvent {
+		logger = logger.With("inputEvent", genericType)
+	}
+
+	lp := NewLoggerParams()
+	if p.addLoggerParams != nil {
+		p.addLoggerParams(lp, genericType)
+	}
+	for k, v := range lp.params {
+		logger = logger.With(k, v)
+	}
+
+	err = p.handler.ProcessSQSEvent(ctx, genericType, record.MessageAttributes)
+
+	if err != nil {
+		logger.AddParam("body", record.Body)
+		if IsErrorRetryable(err) {
+			logger.Infof("Processing returned error: %s", err.Error())
+		} else {
+			logger.Errorf("Processing returned error: %s", err.Error())
+		}
+		successChannel <- false
+		return
+	}
+	successChannel <- true
+}
+
 // GetSQSHandler returns a lambda handler that will process each SQS message in parallel using the provided processRecord function
 func GetSQSHandler[T any](sqsHandlerIface SQSHandlerStruct[T], addLoggerParams func(lp *LoggerParams, t T)) Handler[events.SQSEvent, events.SQSEventResponse] {
-
-	logInputEvent := GetEnv("LOG_INPUT_EVENT") == "true"
-
-	process := func(ctx *Context, record events.SQSMessage, successChannel chan bool) {
-		var genericType T
-		logger := ctx.GetLogger()
-
-		defer func() {
-			if r := recover(); r != nil {
-				strStack := getStackTraceAsSlice(debug.Stack())
-				logger.With("panicStack", strStack).Errorf("Goroutine panicked: %v", r)
-				successChannel <- false
-			}
-		}()
-
-		err := json.Unmarshal([]byte(record.Body), &genericType)
-		if err != nil {
-			logger.Error("JSON unmarshal returned error", "error", err.Error(), "body", record.Body)
-			successChannel <- false
-			return
-		}
-
-		if logInputEvent {
-			logger = logger.With("inputEvent", genericType)
-		}
-
-		lp := NewLoggerParams()
-		if addLoggerParams != nil {
-			addLoggerParams(lp, genericType)
-		}
-		for k, v := range lp.params {
-			logger = logger.With(k, v)
-		}
-
-		err = sqsHandlerIface.ProcessSQSEvent(ctx, genericType, record.MessageAttributes)
-
-		if err != nil {
-			logger.AddParam("body", record.Body)
-			if IsErrorRetryable(err) {
-				logger.Infof("Processing returned error: %s", err.Error())
-			} else {
-				logger.Errorf("Processing returned error: %s", err.Error())
-			}
-			successChannel <- false
-			return
-		}
-		successChannel <- true
+	proc := &sqsProcessor[T]{
+		logInputEvent:   GetEnv("LOG_INPUT_EVENT") == "true",
+		handler:         sqsHandlerIface,
+		addLoggerParams: addLoggerParams,
 	}
 
 	return func(ctx *Context, event events.SQSEvent) (events.SQSEventResponse, error) {
@@ -108,7 +117,7 @@ func GetSQSHandler[T any](sqsHandlerIface SQSHandlerStruct[T], addLoggerParams f
 				TimeoutTimer:   time.NewTimer(time.Until(deadline)),
 			}
 			routines = append(routines, &data)
-			go process(routineCtx, record, c)
+			go proc.process(routineCtx, record, c)
 		}
 
 		//For each go routine, start another routine to wait for the result or the timeout
