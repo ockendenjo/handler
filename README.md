@@ -29,6 +29,7 @@ go fmt $(go list ./...)
 ### sast
 
 ```shell
+go fix --diff ./...
 wget -O .golangci.json https://raw.githubusercontent.com/ockendenjo/actions/refs/heads/main/.golangci.json
 golangci-lint run
 govulncheck ./...
